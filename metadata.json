@@ -1,0 +1,6 @@
+{
+  "name": "手術批價與後台管理系統",
+  "description": "送子鳥生殖醫學手術與臨床處置批價查詢目錄，搭配密碼保護的視覺化資料編輯後台、資料欄位修訂、備份備還與舊密碼管理機制。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
