@@ -9,7 +9,6 @@ interface AdminPortalProps {
   onChangePassword: (oldPw: string, newPw: string) => Promise<{ success: boolean; error?: string }>;
   onLogin: (password: string) => Promise<{ success: boolean; token?: string; error?: string }>;
   onBackToPortal: () => void;
-  isServerless?: boolean;
 }
 
 export default function AdminPortal({
@@ -18,7 +17,6 @@ export default function AdminPortal({
   onChangePassword,
   onLogin,
   onBackToPortal,
-  isServerless,
 }: AdminPortalProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
@@ -475,12 +473,6 @@ export default function AdminPortal({
             </div>
             <h1 className="text-xl font-extrabold tracking-tight">送子鳥批價管理系統</h1>
             <p className="text-xs text-slate-400 mt-1.5 font-medium">請輸入後台登入密碼以進行修改</p>
-            {isServerless && (
-              <div className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-full text-[10px] font-extrabold shadow-sm animate-fade-in">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                <span>獨立運行版 • 暫存於本地瀏覽器</span>
-              </div>
-            )}
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -559,9 +551,7 @@ export default function AdminPortal({
                 </span>
               )}
             </h1>
-            <p className="text-[10px] text-slate-400 font-medium">
-              {isServerless ? "獨立網頁執行模式：您的變更將安全地儲存在本地瀏覽器緩存中" : "您可以點按儲存以永久保存修訂的臨床表格"}
-            </p>
+            <p className="text-[10px] text-slate-400 font-medium">您可以點按儲存以永久保存修訂的臨床表格</p>
           </div>
         </div>
 

@@ -3,50 +3,26 @@ import PatientPortal from "./components/PatientPortal";
 import AdminPortal from "./components/AdminPortal";
 import { PricingDataset } from "./types";
 import DynamicIcon from "./components/Icons";
-import initialData from "./data/surgiprice_data.json";
 
 export default function App() {
   const [data, setData] = useState<PricingDataset | null>(null);
   const [activeCategory, setActiveCategory] = useState("registration");
   const [viewMode, setViewMode] = useState<"patient" | "admin">("patient");
   const [isLoading, setIsLoading] = useState(true);
-  const [isServerless, setIsServerless] = useState(false);
 
-  // Fetch initial pricing details from fullstack Express API, with static / localStorage fallback
+  // Fetch initial pricing details from fullstack Express API
   const fetchPricingDetails = async () => {
     setIsLoading(true);
-    
-    // 1. Try to load local cache first for instant feedback/offline resilience
-    const localCache = localStorage.getItem("surgiprice_local_data");
-    if (localCache) {
-      try {
-        const parsed = JSON.parse(localCache);
-        setData(parsed);
-      } catch (err) {
-        console.error("Failed to parse cached local pricing data:", err);
-      }
-    }
-
     try {
       const response = await fetch("/api/pricing-data");
       if (response.ok) {
         const result = await response.json();
         setData(result);
-        localStorage.setItem("surgiprice_local_data", JSON.stringify(result));
-        setIsServerless(false);
       } else {
-        console.warn("Failed to fetch from API, using static/local fallback:", response.status);
-        setIsServerless(true);
-        if (!localCache) {
-          setData(initialData as any);
-        }
+        console.error("Failed to fetch pricing data:", response.status);
       }
     } catch (err) {
-      console.warn("Express backend offline or serverless environment. Using static/local fallback.");
-      setIsServerless(true);
-      if (!localCache) {
-        setData(initialData as any);
-      }
+      console.error("Network error on fetching pricing database:", err);
     } finally {
       setIsLoading(false);
     }
@@ -56,17 +32,8 @@ export default function App() {
     fetchPricingDetails();
   }, []);
 
-  // Save modified database to fullstack server or localStorage fallback
+  // Save modified database to fullstack server
   const onSaveData = async (updatedDataset: PricingDataset): Promise<boolean> => {
-    // Always persist to localStorage for instant client durability
-    localStorage.setItem("surgiprice_local_data", JSON.stringify(updatedDataset));
-    setData(updatedDataset);
-
-    if (isServerless) {
-      console.log("Client running in serverless mode. Preserved changes statically to LocalStorage.");
-      return true;
-    }
-
     try {
       const res = await fetch("/api/pricing-data", {
         method: "POST",
@@ -76,28 +43,17 @@ export default function App() {
         body: JSON.stringify(updatedDataset),
       });
       if (res.ok) {
-         return true;
-      } else {
-         console.warn("Backend failed to save. Changes remained safe in local browser storage.");
-         return true;
+        setData(updatedDataset);
+        return true;
       }
     } catch (err) {
-      console.error("Failed to POST updated dataset. Storing locally instead:", err);
-      return true;
+      console.error("Error saving updated data:", err);
     }
+    return false;
   };
 
   // Log in to administrator backoffice
   const onLogin = async (password: string): Promise<{ success: boolean; token?: string; error?: string }> => {
-    if (isServerless) {
-      const localPassword = localStorage.getItem("surgiprice_admin_password") || "admin";
-      if (password === localPassword) {
-        return { success: true, token: "admin-secret-token" };
-      } else {
-        return { success: false, error: "密碼錯誤 (本地獨立網頁端驗證)" };
-      }
-    }
-
     try {
       const res = await fetch("/api/admin/login", {
         method: "POST",
@@ -109,26 +65,12 @@ export default function App() {
       const body = await res.json();
       return body;
     } catch (err) {
-      const localPassword = localStorage.getItem("surgiprice_admin_password") || "admin";
-      if (password === localPassword) {
-        return { success: true, token: "admin-secret-token" };
-      }
-      return { success: false, error: "無法連線至伺服器驗證" };
+      return { success: false, error: "無法連線至伺服器" };
     }
   };
 
   // Change administrative login password
   const onChangePassword = async (oldPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
-    if (isServerless) {
-      const localPassword = localStorage.getItem("surgiprice_admin_password") || "admin";
-      if (oldPassword === localPassword) {
-        localStorage.setItem("surgiprice_admin_password", newPassword);
-        return { success: true };
-      } else {
-        return { success: false, error: "舊密碼不正確 (本地獨立網頁端驗證)" };
-      }
-    }
-
     try {
       const res = await fetch("/api/admin/change-password", {
         method: "POST",
@@ -138,17 +80,9 @@ export default function App() {
         body: JSON.stringify({ oldPassword, newPassword }),
       });
       const body = await res.json();
-      if (body.success) {
-        localStorage.setItem("surgiprice_admin_password", newPassword);
-      }
       return body;
     } catch (err) {
-      const localPassword = localStorage.getItem("surgiprice_admin_password") || "admin";
-      if (oldPassword === localPassword) {
-        localStorage.setItem("surgiprice_admin_password", newPassword);
-        return { success: true };
-      }
-      return { success: false, error: "無法連線至伺服器修改（已為您暫存至本地瀏覽器）" };
+      return { success: false, error: "無法連線至伺服器" };
     }
   };
 
@@ -176,7 +110,7 @@ export default function App() {
         </p>
         <button
           onClick={fetchPricingDetails}
-          className="py-2 px-4 bg-rose-600 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/10 hover:bg-rose-500 transition-colors"
+          className="py-2 px-4 bg-rose-650 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-650/10 hover:bg-rose-550 transition-colors"
         >
           重新整理資料
         </button>
@@ -192,7 +126,6 @@ export default function App() {
           activeCategory={activeCategory}
           setActiveCategory={setActiveCategory}
           onAdminLoginClick={() => setViewMode("admin")}
-          isServerless={isServerless}
         />
       ) : (
         <AdminPortal
@@ -201,7 +134,6 @@ export default function App() {
           onChangePassword={onChangePassword}
           onLogin={onLogin}
           onBackToPortal={() => setViewMode("patient")}
-          isServerless={isServerless}
         />
       )}
     </>

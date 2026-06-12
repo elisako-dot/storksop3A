@@ -8,7 +8,6 @@ interface PatientPortalProps {
   activeCategory: string;
   setActiveCategory: (key: string) => void;
   onAdminLoginClick: () => void;
-  isServerless?: boolean;
 }
 
 export default function PatientPortal({
@@ -16,7 +15,6 @@ export default function PatientPortal({
   activeCategory,
   setActiveCategory,
   onAdminLoginClick,
-  isServerless,
 }: PatientPortalProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -163,12 +161,7 @@ export default function PatientPortal({
           </div>
           <div>
             <h2 className="text-sm font-extrabold text-slate-800 tracking-tight leading-tight">送子鳥生殖醫學</h2>
-            <div className="flex items-center gap-1">
-              <p className="text-[11px] text-slate-400 font-medium">手術批價查詢系統</p>
-              {isServerless && (
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" title="獨立網頁運行模式已啟用：資料已完全暫存在您的瀏覽器中" />
-              )}
-            </div>
+            <p className="text-[11px] text-slate-400 font-medium">手術批價查詢系統</p>
           </div>
         </div>
 
