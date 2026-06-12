@@ -72,102 +72,6 @@ export default function AdminPortal({
     setSearchQuery("");
   }, [activeCategory]);
 
-  // Perform dynamic fuzzy match search across all categories for admin portal
-  const searchResults = React.useMemo(() => {
-    if (!localData || !searchQuery.trim()) return [];
-    const query = searchQuery.trim().toLowerCase();
-    
-    interface SearchAdminResult {
-      categoryKey: string;
-      categoryLabel: string;
-      section: Section;
-      sectionIndex: number;
-      matches: string[];
-    }
-    const results: SearchAdminResult[] = [];
-
-    const { categoriesData, categoriesList } = localData;
-
-    for (const cat of categoriesList) {
-      const catData = categoriesData[cat.key];
-      if (!catData) continue;
-
-      // Match category title or label
-      const catMatch = cat.label.toLowerCase().includes(query) || catData.title.toLowerCase().includes(query);
-
-      catData.sections.forEach((section, idx) => {
-        const matches: string[] = [];
-        
-        // If Category matched, we can include its sections as a result
-        if (catMatch) {
-          matches.push(`分類名稱符合：${cat.label}`);
-        }
-
-        // Section name match
-        if (section.name?.toLowerCase().includes(query)) {
-          matches.push(`表格主題符合：${section.name}`);
-        }
-
-        // Note items or Table headers/rows match
-        const isTable = !section.type || section.type === "table";
-        if (isTable) {
-          const s = section as TableSection;
-          if (s.headers?.some(h => h.toLowerCase().includes(query))) {
-            const matchedHeaders = s.headers.filter(h => h.toLowerCase().includes(query));
-            matches.push(`欄位表頭符合：${matchedHeaders.join(", ")}`);
-          }
-          if (s.rows) {
-            s.rows.forEach((row, rowIdx) => {
-              const matchedCells = row.filter(cell => cell.toLowerCase().includes(query));
-              if (matchedCells.length > 0) {
-                matches.push(`資料行 #${rowIdx + 1} 符合：${matchedCells.join(" | ")}`);
-              }
-            });
-          }
-        } else {
-          const s = section as NotesSection;
-          if (s.items) {
-            s.items.forEach((item, itemIdx) => {
-              if (item.toLowerCase().includes(query)) {
-                matches.push(`注意事項第 ${itemIdx + 1} 點符合：${item.length > 60 ? item.substring(0, 60) + "..." : item}`);
-              }
-            });
-          }
-        }
-
-        if (matches.length > 0) {
-          results.push({
-            categoryKey: cat.key,
-            categoryLabel: cat.label,
-            section,
-            sectionIndex: idx,
-            matches: matches.slice(0, 3) // Keep up to 3 snippets
-          });
-        }
-      });
-    }
-
-    return results;
-  }, [searchQuery, localData]);
-
-  const handleLocateAndEdit = (categoryKey: string, sectionName: string) => {
-    setActiveCategory(categoryKey);
-    // Clear search query so that it switches back to standard layout
-    setSearchQuery("");
-    
-    // Smooth scroll to the target section with a nice highlight ring
-    setTimeout(() => {
-      const element = document.getElementById(`admin-section-${sectionName}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        element.classList.add("ring-4", "ring-rose-500/30", "border-rose-400", "scale-[1.01]");
-        setTimeout(() => {
-          element.classList.remove("ring-4", "ring-rose-500/30", "border-rose-400", "scale-[1.01]");
-        }, 2200);
-      }
-    }, 180);
-  };
-
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
@@ -643,53 +547,51 @@ export default function AdminPortal({
         <main className="flex-1 overflow-y-auto p-6 max-w-5xl">
           
           {/* Header parameters */}
-          {!searchQuery.trim() && (
-            <section className="bg-white border border-slate-200/60 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-end gap-4 justify-between animate-fade-in">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                <div>
-                  <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                    分區主題名稱 (Category Title)
-                  </label>
-                  <input
-                    type="text"
-                    value={activeCategoryData.title}
-                    onChange={(e) => updateActiveCategoryHeaderField("title", e.target.value)}
-                    className="w-full h-10 px-3 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-100 outline-none rounded-xl text-xs font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                    最後更新日期 (Last Updated)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="YYYY/MM/DD 或 尚無"
-                    value={activeCategoryData.updated || ""}
-                    onChange={(e) => updateActiveCategoryHeaderField("updated", e.target.value)}
-                    className="w-full h-10 px-3 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-100 outline-none rounded-xl text-xs font-mono font-bold"
-                  />
-                </div>
+          <section className="bg-white border border-slate-200/60 rounded-2xl p-5 mb-6 shadow-sm flex flex-col md:flex-row items-end gap-4 justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+              <div>
+                <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  分區主題名稱 (Category Title)
+                </label>
+                <input
+                  type="text"
+                  value={activeCategoryData.title}
+                  onChange={(e) => updateActiveCategoryHeaderField("title", e.target.value)}
+                  className="w-full h-10 px-3 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-100 outline-none rounded-xl text-xs font-bold"
+                />
               </div>
-              
-              {/* Quick add elements action panel */}
-              <div className="flex-shrink-0 flex gap-2">
-                <button
-                  onClick={() => addSection("table")}
-                  className="py-2.5 px-3.5 border border-slate-200 bg-white hover:bg-slate-50 hover:text-rose-600 transition-all rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
-                >
-                  <DynamicIcon name="Plus" className="w-3.5 h-3.5 text-rose-500" />
-                  新增表格
-                </button>
-                <button
-                  onClick={() => addSection("notes")}
-                  className="py-2.5 px-3.5 border border-slate-200 bg-white hover:bg-slate-50 hover:text-indigo-650 transition-all rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
-                >
-                  <DynamicIcon name="Plus" className="w-3.5 h-3.5 text-indigo-500" />
-                  新增說明
-                </button>
+              <div>
+                <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  最後更新日期 (Last Updated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="YYYY/MM/DD 或 尚無"
+                  value={activeCategoryData.updated || ""}
+                  onChange={(e) => updateActiveCategoryHeaderField("updated", e.target.value)}
+                  className="w-full h-10 px-3 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-100 outline-none rounded-xl text-xs font-mono font-bold"
+                />
               </div>
-            </section>
-          )}
+            </div>
+            
+            {/* Quick add elements action panel */}
+            <div className="flex-shrink-0 flex gap-2">
+              <button
+                onClick={() => addSection("table")}
+                className="py-2.5 px-3.5 border border-slate-200 bg-white hover:bg-slate-50 hover:text-rose-600 transition-all rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              >
+                <DynamicIcon name="Plus" className="w-3.5 h-3.5 text-rose-500" />
+                新增表格
+              </button>
+              <button
+                onClick={() => addSection("notes")}
+                className="py-2.5 px-3.5 border border-slate-200 bg-white hover:bg-slate-50 hover:text-indigo-650 transition-all rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+              >
+                <DynamicIcon name="Plus" className="w-3.5 h-3.5 text-indigo-500" />
+                新增說明
+              </button>
+            </div>
+          </section>
 
           {/* 後台內部即時搜尋功能 */}
           <section className="bg-white border border-slate-200/60 rounded-2xl p-4 mb-6 shadow-sm">
@@ -699,10 +601,10 @@ export default function AdminPortal({
               </span>
               <input
                 type="text"
-                placeholder="搜尋全站所有費用內容 (可搜尋分類、表格名稱、細項項目、健保碼、處置代碼、備註說明...)"
+                placeholder="在目前大分區內搜尋... (可搜尋：表格名稱、欄位名稱、手術/處置代碼、項目名稱、點數、備註說明)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 pl-10 pr-10 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-100 outline-none rounded-xl text-xs font-medium text-slate-700 bg-slate-50/20 placeholder-slate-400 transition-all shadow-inner"
+                className="w-full h-11 pl-10 pr-10 border border-slate-200 focus:border-rose-400 focus:ring-1 focus:ring-rose-100 outline-none rounded-xl text-xs font-semibold text-slate-700 bg-slate-50/20 placeholder-slate-400 transition-all shadow-inner"
               />
               {searchQuery && (
                 <button
@@ -716,105 +618,68 @@ export default function AdminPortal({
             </div>
           </section>
 
-          {searchQuery ? (
-            /* ========================================================
-               全站內容即時搜尋結果模式
-               ======================================================== */
-            <div className="space-y-4 animate-fade-in mb-8">
-              <div className="bg-rose-50/40 border border-rose-100 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm feedback-banner">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 text-rose-700 font-extrabold">
-                    <DynamicIcon name="Search" className="w-4.5 h-4.5 text-rose-500 animate-pulse" />
-                    <h3 className="text-xs">全站費用項目搜尋結果</h3>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    已為您篩選跨費用大類關鍵字：<strong className="text-rose-650 font-black">「{searchQuery}」</strong>，共找到 <strong className="text-rose-600 font-extrabold">{searchResults.length}</strong> 個符合的表格或注意事項。
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="py-1 px-3 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 self-start sm:self-auto shadow-inner"
-                >
-                  <DynamicIcon name="X" className="w-3 h-3" />
-                  <span>清除搜尋</span>
-                </button>
+          {searchQuery && (
+            <div className="mb-4 bg-rose-50/50 border border-rose-100 rounded-xl p-3 flex justify-between items-center text-xs text-rose-800">
+              <div className="flex items-center gap-1.5 font-semibold">
+                <DynamicIcon name="Activity" className="w-4 h-4 text-rose-500 animate-pulse" />
+                <span>
+                  已篩選關鍵字：<strong className="text-rose-650 font-extrabold">「 {searchQuery} 」</strong>
+                </span>
               </div>
-
-              {searchResults.length === 0 ? (
-                <div className="py-20 bg-white border border-slate-200 rounded-2xl text-center text-slate-400 text-xs shadow-sm">
-                  <DynamicIcon name="Search" className="w-10 h-10 mx-auto mb-2 opacity-20 text-slate-400" />
-                  <p className="font-extrabold text-slate-700 text-sm">未找到任何符合「{searchQuery}」的項目</p>
-                  <p className="text-[10px] mt-1 text-slate-400">請嘗試更換其他關鍵字 (如簡稱、院內代碼、健保特定碼等)</p>
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  {searchResults.map((res, idx) => {
-                    const isTable = !res.section.type || res.section.type === "table";
-                    return (
-                      <div
-                        key={idx}
-                        className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-slate-350 transition-all p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 group"
-                      >
-                        <div className="space-y-2 flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 uppercase tracking-wide">
-                              {res.categoryLabel}
-                            </span>
-                            <span className="text-slate-300 font-bold text-xs">/</span>
-                            <span className="text-xs font-black text-slate-800 flex items-center gap-1">
-                              <DynamicIcon name={isTable ? "Table" : "FileText"} className="w-3.5 h-3.5 text-slate-400" />
-                              {res.section.name}
-                            </span>
-                          </div>
-
-                          <div className="space-y-1.5 pl-2 border-l-2 border-slate-100 py-0.5 pr-2 max-h-40 overflow-y-auto">
-                            {res.matches.map((matchLine, mIdx) => (
-                              <p
-                                key={mIdx}
-                                className="text-[11px] text-slate-500 font-semibold leading-relaxed"
-                              >
-                                {matchLine}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => handleLocateAndEdit(res.categoryKey, res.section.name)}
-                          className="w-full md:w-auto flex-shrink-0 py-2.5 px-4.5 bg-slate-900 border border-slate-800 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-white font-extrabold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-                        >
-                          <DynamicIcon name="Edit" className="w-3.5 h-3.5" />
-                          <span>前往編輯此區塊</span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              <button
+                onClick={() => setSearchQuery("")}
+                className="text-[10px] py-1 px-2.5 bg-white hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-lg transition-colors font-bold shadow-sm"
+              >
+                清除篩選並顯示全部
+              </button>
             </div>
-          ) : (
-            /* ========================================================
-               一般模式：特定大分區特定表格編輯與新增
-               ======================================================== */
-            <div className="space-y-6">
-              {activeCategoryData.sections.length === 0 ? (
-                <div className="py-20 bg-white border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 text-xs">
-                  <DynamicIcon name="Plus" className="w-10 h-10 mx-auto mb-2 opacity-30 text-rose-500" />
-                  <p className="font-extrabold text-slate-700">目前沒有任何內容區間</p>
-                  <p className="text-[10px] mt-1 text-slate-400">請按上方「新增表格」或「新增說明」開始編撰</p>
-                </div>
-              ) : (() => {
-                const query = "";
-                const filteredSections = activeCategoryData.sections.map((section, idx) => ({ section, idx }));
+          )}
 
-                return filteredSections.map(({ section, idx: secIdx }) => {
-                  const isTable = !section.type || section.type === "table";
-                  return (
-                    <div
-                      key={secIdx}
-                      id={`admin-section-${section.name}`}
-                      className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
-                    >
+          {/* Section Editors Map */}
+          <div className="space-y-6">
+            {activeCategoryData.sections.length === 0 ? (
+              <div className="py-20 bg-white border border-dashed border-slate-200 rounded-2xl text-center text-slate-400 text-xs">
+                <DynamicIcon name="Plus" className="w-10 h-10 mx-auto mb-2 opacity-30 text-rose-500" />
+                <p className="font-extrabold text-slate-700">目前沒有任何內容區間</p>
+                <p className="text-[10px] mt-1 text-slate-400">請按上方「新增表格」或「新增說明」開始編撰</p>
+              </div>
+            ) : (() => {
+              const query = searchQuery.trim().toLowerCase();
+              const filteredSections = activeCategoryData.sections
+                .map((section, idx) => ({ section, idx }))
+                .filter(({ section }) => {
+                  if (!query) return true;
+                  if (section.name?.toLowerCase().includes(query)) return true;
+                  
+                  const isTbl = !section.type || section.type === "table";
+                  if (isTbl) {
+                    const s = section as TableSection;
+                    if (s.headers?.some(h => h.toLowerCase().includes(query))) return true;
+                    if (s.rows?.some(r => r.some(cell => cell.toLowerCase().includes(query)))) return true;
+                  } else {
+                    const s = section as NotesSection;
+                    if (s.items?.some(i => i.toLowerCase().includes(query))) return true;
+                  }
+                  return false;
+                });
+
+              if (filteredSections.length === 0) {
+                return (
+                  <div className="py-20 bg-white border border-slate-200 rounded-2xl text-center text-slate-400 text-xs">
+                    <DynamicIcon name="Search" className="w-10 h-10 mx-auto mb-2 opacity-20 text-slate-400" />
+                    <p className="font-extrabold text-slate-700">未找到與「{searchQuery}」相關的項目</p>
+                    <p className="text-[10px] mt-1 text-slate-400">請嘗試更換其他關鍵字，或清除篩選以檢視全部項目</p>
+                  </div>
+                );
+              }
+
+              return filteredSections.map(({ section, idx: secIdx }) => {
+                const isTable = !section.type || section.type === "table";
+                return (
+                  <div
+                    key={secIdx}
+                    className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+                  >
                     {/* Section Editor Title Toolbar */}
                     <div className="bg-slate-50/60 px-5 py-3.5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                       <div className="flex-1 flex items-center gap-2">
@@ -1086,7 +951,6 @@ export default function AdminPortal({
               });
             })()}
           </div>
-          )}
 
         </main>
       </div>
